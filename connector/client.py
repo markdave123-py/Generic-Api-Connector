@@ -51,18 +51,20 @@ class APIClient:
         headers = kwargs.pop("headers", {})
         headers["Authorization"] = f"Bearer {token}"
         # redact before logging
-        logger.debug(
-            "Request: %s %s headers=%s", method, path, redact_headers(headers)
-        )
+        logger.debug("Request: %s %s headers=%s", method, path, redact_headers(headers))
         last_exc: Optional[Exception] = None
         url = path if path.startswith("http") else self.base_url + path
 
         for attempt in range(1, self._max_retries + 1):
             try:
-                resp = await self._client.request(method, url, headers=headers, **kwargs)
+                resp = await self._client.request(
+                    method, url, headers=headers, **kwargs
+                )
             except httpx.HTTPError as exc:
                 last_exc = exc
-                logger.warning("Network error (%s) attempt %s/%s", exc, attempt, self._max_retries)
+                logger.warning(
+                    "Network error (%s) attempt %s/%s", exc, attempt, self._max_retries
+                )
             else:
                 if resp.status_code < 400:
                     logger.debug("Response %s %s", resp.status_code, url)
@@ -82,7 +84,9 @@ class APIClient:
                     await asyncio.sleep(self._backoff_factor * (2 ** (attempt - 1)))
                     continue  # retry
                 if 500 <= resp.status_code < 600:
-                    logger.warning("Server error %s, attempt %s", resp.status_code, attempt)
+                    logger.warning(
+                        "Server error %s, attempt %s", resp.status_code, attempt
+                    )
                     await asyncio.sleep(self._backoff_factor * (2 ** (attempt - 1)))
                     continue
                 # for other 4xx errors, no retry
@@ -108,7 +112,9 @@ class APIClient:
         pages = range(2, first.total_pages + 1)
         if concurrent:
             coros = [self.list_items_page(p) for p in pages]
-            results: List[ItemPage] = await gather_limited(coros, self._concurrency_limit)
+            results: List[ItemPage] = await gather_limited(
+                coros, self._concurrency_limit
+            )
             for page_obj in results:
                 items.extend(page_obj.items)
         else:

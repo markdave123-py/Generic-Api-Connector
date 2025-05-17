@@ -1,10 +1,12 @@
 """Lightweight anomaly detection plug‑in."""
+
 import time
 from collections import deque
 from .config import get_settings
 from .logger import logger
 
 _settings = get_settings()
+
 
 class AnomalyDetector:
     def __init__(self, threshold: int = _settings.rate_threshold_per_minute):
@@ -19,8 +21,11 @@ class AnomalyDetector:
             self._timestamps.popleft()
         if len(self._timestamps) > self.threshold:
             logger.warning(
-                "High request rate detected: %s requests in last 60s", len(self._timestamps)
+                "High request rate detected: %s requests in last 60s",
+                len(self._timestamps),
             )
 
     def record_401(self):
-        logger.error("Repeated 401 Unauthorized responses – possible credential misuse.")
+        logger.error(
+            "Repeated 401 Unauthorized responses – possible credential misuse."
+        )

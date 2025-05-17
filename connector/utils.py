@@ -2,9 +2,7 @@ import asyncio
 from typing import Any, Awaitable, Callable, Iterable, List
 
 
-async def gather_limited(
-    coros: Iterable[Awaitable[Any]], limit: int
-) -> List[Any]:
+async def gather_limited(coros: Iterable[Awaitable[Any]], limit: int) -> List[Any]:
     """Run coroutines concurrently with a concurrency limit."""
     semaphore = asyncio.Semaphore(limit)
 

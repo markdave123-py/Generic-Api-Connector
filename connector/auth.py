@@ -1,4 +1,5 @@
 """OAuth2 Client‑Credentials token handling."""
+
 import asyncio
 import time
 from typing import Optional
@@ -21,7 +22,9 @@ class OAuth2Manager:
 
     async def get_token(self) -> str:
         async with self._lock:
-            if not self._token or (self._expires_at and time.time() >= self._expires_at):
+            if not self._token or (
+                self._expires_at and time.time() >= self._expires_at
+            ):
                 await self._refresh()
             return self._token  # type: ignore
 
@@ -36,7 +39,9 @@ class OAuth2Manager:
         logger.debug("Token request: POST %s", _TOKEN_ENDPOINT)
         resp = await self._client.post(_TOKEN_ENDPOINT, data=data)
         if resp.status_code != 200:
-            raise AuthenticationError(f"Token endpoint failed ({resp.status_code}) – {resp.text}")
+            raise AuthenticationError(
+                f"Token endpoint failed ({resp.status_code}) – {resp.text}"
+            )
         tr = TokenResponse.parse_obj(resp.json())
         self._token = tr.access_token
         self._expires_at = time.time() + tr.expires_in - 60  # refresh 60s early

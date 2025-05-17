@@ -1,4 +1,5 @@
 """FastAPI simulation of the third‑party API (robust to FastAPI versions <0.110)."""
+
 import math
 import os
 import time
@@ -27,6 +28,7 @@ except ImportError:  # pragma: no cover – for older FastAPI
             self.client_secret = client_secret
             self.grant_type = grant_type
 
+
 # ----------------------------------------------------------------------------
 
 app = FastAPI(title="Simulated API")
@@ -36,6 +38,7 @@ CLIENT_ID = os.getenv("API_CLIENT_ID", "testclient")
 CLIENT_SECRET = os.getenv("API_CLIENT_SECRET", "testsecret")
 TOKEN_VALUE = "simtoken"  # constant token for simplicity
 TOKEN_LIFETIME = 30  # seconds
+
 
 # OAuth2 token endpoint
 @app.post("/oauth2/token")
@@ -48,13 +51,13 @@ async def token(form: OAuth2ClientCredentialsRequestForm = Depends()):
         "expires_in": TOKEN_LIFETIME,
     }
 
+
 bearer_scheme = OAuth2PasswordBearer(tokenUrl="/oauth2/token", auto_error=False)
 
 # Sample data – five items
-ITEMS = [
-    {"id": i, "name": f"Item {i}", "value": i * 1.5} for i in range(1, 6)
-]
+ITEMS = [{"id": i, "name": f"Item {i}", "value": i * 1.5} for i in range(1, 6)]
 PAGE_SIZE = 2
+
 
 @app.get("/items")
 async def list_items(page: int = 1, token: str = Depends(bearer_scheme)):

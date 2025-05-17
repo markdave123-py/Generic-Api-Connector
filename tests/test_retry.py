@@ -2,14 +2,17 @@ import httpx
 import pytest
 from connector.client import APIClient
 
+
 class _DummyTransport(httpx.AsyncBaseTransport):
     def __init__(self, fail_times=2):
         self._fail_times = fail_times
+
     async def handle_async_request(self, request):
         if self._fail_times > 0:
             self._fail_times -= 1
             raise httpx.ConnectTimeout("boom")
         return httpx.Response(200, json={"page": 1, "total_pages": 1, "items": []})
+
 
 @pytest.mark.asyncio
 async def test_retry_logic():
