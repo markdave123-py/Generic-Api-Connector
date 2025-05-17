@@ -1,9 +1,8 @@
-"""Lightweight anomaly detection plug‑in."""
-
 import time
 from collections import deque
 from .config import get_settings
 from .logger import logger
+from typing import Deque
 
 _settings = get_settings()
 
@@ -11,7 +10,7 @@ _settings = get_settings()
 class AnomalyDetector:
     def __init__(self, threshold: int = _settings.rate_threshold_per_minute):
         self.threshold = threshold
-        self._timestamps = deque(maxlen=1000)
+        self._timestamps: Deque[float] = deque(maxlen=1000)
 
     def record_request(self):
         now = time.time()
