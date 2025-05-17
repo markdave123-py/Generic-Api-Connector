@@ -1,6 +1,5 @@
 import asyncio
-import time
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 import httpx
 from .config import get_settings
 from .auth import OAuth2Manager
@@ -9,8 +8,6 @@ from .exceptions import (
     APIClientError,
     AuthenticationError,
     NotFoundError,
-    RateLimitError,
-    ServerError,
 )
 from .logger import logger, redact_headers
 from .anomaly import AnomalyDetector

@@ -1,12 +1,10 @@
-"""OAuth2 Client‑Credentials token handling."""
-
 import asyncio
 import time
 from typing import Optional
 import httpx
 from .models import TokenResponse
 from .exceptions import AuthenticationError
-from .logger import logger, redact_headers
+from .logger import logger
 
 _TOKEN_ENDPOINT = "/oauth2/token"
 

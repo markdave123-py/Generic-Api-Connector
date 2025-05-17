@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Awaitable, Callable, Iterable, List
+from typing import Any, Awaitable, Iterable, List
 
 
 async def gather_limited(coros: Iterable[Awaitable[Any]], limit: int) -> List[Any]:
