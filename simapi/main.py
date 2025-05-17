@@ -1,8 +1,5 @@
-"""FastAPI simulation of the third‑party API (robust to FastAPI versions <0.110)."""
-
 import math
 import os
-import time
 from fastapi import Depends, FastAPI, HTTPException, Form
 from fastapi.security import OAuth2PasswordBearer
 from starlette.responses import JSONResponse
