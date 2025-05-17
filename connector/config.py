@@ -28,4 +28,4 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    return Settings()  # cached by Pydantic
+    return Settings()  # type: ignore[call-arg]
