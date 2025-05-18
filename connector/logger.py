@@ -1,5 +1,3 @@
-"""Structured logger with sensitive data redaction."""
-
 import logging
 from typing import Dict
 
@@ -9,6 +7,8 @@ _sensitive_headers = {
     "cookie",
     "set-cookie",
 }
+
+"""Structured logger with sensitive data redaction."""
 
 
 def redact_headers(headers: Dict[str, str]) -> Dict[str, str]:

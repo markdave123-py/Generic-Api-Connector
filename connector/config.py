@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     rate_threshold_per_minute: int = 100
 
     model_config = SettingsConfigDict(
-        env_prefix="",  # don’t add “APP_” or similar
+        env_prefix="",
         env_file=os.getenv("API_CONNECTOR_ENV", ".env"),
         env_file_encoding="utf-8",
     )

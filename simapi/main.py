@@ -4,15 +4,15 @@ from fastapi import Depends, FastAPI, HTTPException, Form
 from fastapi.security import OAuth2PasswordBearer
 from starlette.responses import JSONResponse
 
-# --- Compatibility shim ------------------------------------------------------
+# Compatibility shim
 # FastAPI ≤0.109 does not ship OAuth2ClientCredentialsRequestForm.  If it is
 # unavailable we build a minimal replacement that behaves the same for our test
 # purposes.
 try:
     from fastapi.security import OAuth2ClientCredentialsRequestForm  # type: ignore
-except ImportError:  # pragma: no cover – for older FastAPI
+except ImportError:
 
-    class OAuth2ClientCredentialsRequestForm:  # pylint: disable=too-few-public-methods
+    class OAuth2ClientCredentialsRequestForm:
         """Fallback form parser for client‑credentials grant."""
 
         def __init__(
@@ -25,8 +25,6 @@ except ImportError:  # pragma: no cover – for older FastAPI
             self.client_secret = client_secret
             self.grant_type = grant_type
 
-
-# ----------------------------------------------------------------------------
 
 app = FastAPI(title="Simulated API")
 

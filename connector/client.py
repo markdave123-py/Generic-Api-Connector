@@ -72,7 +72,7 @@ class APIClient:
                     try:
                         await self._oauth._refresh()
                     except AuthenticationError:
-                        raise  # bubble up
+                        raise
                     continue  # retry with fresh token
                 if resp.status_code == 404:
                     raise NotFoundError(path)
@@ -94,7 +94,7 @@ class APIClient:
             raise APIClientError("Max retries exceeded", last_exc)
         raise APIClientError("Request failed after retries")
 
-    # ------------- High‑level helpers -------------
+    # High‑level helpers
     async def list_items_page(self, page: int = 1) -> ItemPage:
         resp = await self._request("GET", f"/items?page={page}")
         return ItemPage.parse_obj(resp.json())
