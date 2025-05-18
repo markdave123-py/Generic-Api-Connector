@@ -249,4 +249,4 @@ settings. Dummy API creds are supplied via workflow `env:`.
 
 ---
 
-> *Maintained by @your‑team – PRs & issues welcome.*
+> *Maintained by @markdave123-py – PRs & issues welcome.*
