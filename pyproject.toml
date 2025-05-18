@@ -15,3 +15,6 @@ exclude = [
     "__pycache__",
     ".venv",
 ]
+
+[tool.setuptools.packages.find]
+include = ["connector", "simapi"]
