@@ -35,6 +35,9 @@ jobs:
           flake8 .
           mypy connector
       - name: Run unit tests
+        env:
+          CLIENT_ID: ${{ secrets.DUMMY_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.DUMMY_CLIENT_SECRET }}
         run: pytest -q
       - name: Build Docker image
         run: docker build -t ${{ github.sha }} .
