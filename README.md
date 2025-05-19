@@ -1,252 +1,276 @@
-# Async API Connector
+# Async‑API Connector
+
+> **Scalable, plug‑in–ready framework for consuming any number of OAuth 2, REST‑style third‑party APIs.**
+> *One plumbing layer – many thin provider adapters.*
+
+---
 
 ## Table of Contents
 
-1. [Project Summary](#project-summary)
-2. [Key Features](#key-features)
-3. [Architecture](#architecture)
-4. [Directory Layout](#directory-layout)
-5. [Quick Start](#quick-start)
+1. [Project Overview](#project-overview)
+2. [High‑Level Architecture](#high-level-architecture)
+3. [Directory Layout](#directory-layout)
+4. [Quick Start](#quick-start)
 
-   * [Local Python](#run-locally-with-python)
-   * [Docker Compose](#run-everything-with-docker-compose)
-6. [Runtime Configuration](#runtime-configuration)
-7. [Using the Connector in Your Code](#using-the-connector-in-your-code)
-8. [Logging & Redaction](#logging--redaction)
+   * [Local Python](#run-locally-with-python)
+   * [Docker Compose](#run-with-docker-compose)
+5. [Runtime Configuration](#runtime-configuration)
+6. [Connector Registry & Extensibility](#connector-registry--extensibility)
+7. [Using the Connector](#using-the-connector)
+8. [Logging & Redaction](#logging--redaction)
 9. [Anomaly Detection](#anomaly-detection)
 10. [Testing](#testing)
-11. [CI/CD Pipeline](#cicd-pipeline)
-12. [Security Considerations](#security-considerations)
-13. [Road‑map / TODO](#road-map--todo)
+11. [CI / CD](#cicd)
+12. [Security Notes](#security-notes)
+13. [Road‑map](#road-map)
 
 ---
 
-## Project Summary
+## Project Overview
 
-The **Async API Connector** is a production‑grade, fully asynchronous Python library (with a companion FastAPI mock) that demonstrates best practices for consuming OAuth 2 "client‑credentials" APIs:
+The **Async‑API Connector** is a production‑quality asynchronous Python SDK and
+mock‑server that demonstrates best‑practices for **securely** consuming
+third‑party REST APIs that use *client‑credentials* OAuth 2.
 
-\* **httpx + async/await** for non‑blocking I/O
-\* **Pydantic v2** models for strict, typed request / response handling
-\* Built‑in **retry** and **exponential back‑off** for network, 5xx and 429 errors
-\* Transparent **token refresh** on expiry
-\* Out‑of‑the‑box **pagination helper** (concurrent fan‑out)
-\* Request / response **logging with sensitive‑field redaction**
-\* Pluggable **anomaly detector** for rate spikes or credential abuse
-\* Complete **pytest** suite (unit + integration)
-\* Containerised via **Dockerfile** & **docker‑compose.yml**
-\* Automated **GitHub Actions** CI (lint → type‑check → tests → build & push image)
+Core abilities
 
----
-
-## Key Features
-
-| Area                  | Details                                                                                                                 |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Async I/O**         | `httpx.AsyncClient` with shared connection pool.                                                                        |
-| **Auth**              | `OAuth2Manager` exchanges *client\_id / client\_secret* for a bearer token and refreshes automatically.                 |
-| **Retry**             | configurable max‑retries, back‑off factor, jitter; honours `Retry‑After` header.                                        |
-| **Pagination**        | `list_all_items(concurrent=True)` fetches page 1, then parallel‑fetches remaining pages respecting `CONCURRENCY_LIMIT`. |
-| **Logging**           | Every outbound request, status code, latency; redact `Authorization`, `access_token`, etc.                              |
-| **Anomaly Detection** | Sliding‑window counter; emits warning log if requests/min > threshold or if multiple tokens appear.                     |
-| **Tests**             | 100 % async tests with `pytest‑asyncio`; in‑process FastAPI mock via `ASGITransport` (no TCP).                          |
-| **CI/CD**             | Black + Flake8 + mypy + pytest; Docker image pushed to **Docker Hub** on every `main` push.                             |
+| Area                    | Highlights                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------ |
+| Async I/O               | `httpx.AsyncClient` + `async/await`                                                        |
+| OAuth2                  | Automatic token refresh, endpoint override support                                         |
+| Retry / Back‑off        | Exponential, respects `Retry‑After`, jitter, 429 & 5xx                                     |
+| Pagination              | Page, concurrent fan‑out, concurrency limit                                                |
+| Structured Logging      | JSON; redact sensitive headers/keys                                                        |
+| Anomaly Detection       | In‑memory sliding window; warns on spikes / token misuse                                   |
+| **Extensible Adapters** | Drop‑in connector files (`connectors/`) – Google, Facebook, Twitter, … no code duplication |
+| Tests                   | 100 % async pytest suite – runs in‑process, zero sockets                                   |
+| Docker                  | Multi‑stage image, `docker compose` one‑liner                                              |
+| CI/CD                   | Black, Flake8, mypy, pytest, Build & push → Docker Hub                                     |
 
 ---
 
-## Architecture
+## High‑Level Architecture
 
 ```mermaid
 flowchart TD
-    subgraph Client_Process
-        A([Your code]) -->|async/await| B(APIClient)
+    subgraph Plumbing[Shared plumbing (connector/*)]
+        C1(APIClient\n_retry / logging) -- uses --> OA[OAuth2Manager]
+        C1 -- event --> AD[AnomalyDetector]
     end
-    B -->|OAuth2Manager| C[OAuth 2 Token Endpoint]
-    B -->|_request| D[Third‑Party API / Mock]
-    B -->|logs to| E[(Structured Logger)]
-    B -->|metrics| F[[Anomaly Detector]]
+
+    subgraph Adapters[Provider adapters (connectors/*)]
+        G[GoogleConnector] -- inherits --> C1
+        F[FacebookConnector] -- inherits --> C1
+        S[SimConnector] -- inherits --> C1
+    end
+
+    REG(Registry) -- "sim" --> S
+    REG -- "google" --> G
+    REG -- "facebook" --> F
+
+    UserCode -->|list_users()| G
+    S -->|/items| Mock[FastAPI Mock]
+    G -->|/admin/users| GoogleAPI[(Google API)]
 ```
 
-* The **APIClient** orchestrates auth, retries, pagination and logging.
-* **OAuth2Manager** is called lazily; token is cached in‑memory until `expires_in`.
-* **Logger** prints JSON to stdout; sensitive headers/body keys are redacted via a configurable list.
-* **AnomalyDetector** is a purely in‑memory helper that can be swapped for Prometheus, Datadog, etc.
+* **Adapters** contain only endpoint paths + tiny per‑provider helpers.
+* **Plumbing** (auth, retry, logging, anomaly, pagination) stays single‑sourced.
+* **Registry** allows late import – you select a provider by string name.
 
 ---
 
-## Directory Layout
+## Directory Layout
 
 ```
-async‑api‑connector/
-├── connector/          # the reusable library
-│   ├── __init__.py     # re‑exports APIClient
-│   ├── auth.py         # OAuth2Manager
-│   ├── client.py       # APIClient core
-│   ├── anomaly.py      # simple rate‑spike detector
-│   ├── logger.py       # redacting JSON logger
-│   ├── models.py       # Pydantic v2 models
-│   ├── config.py       # Pydantic‑Settings loader
-│   └── utils.py        # misc helpers
-├── simapi/             # FastAPI mock server
-│   ├── __init__.py
+async-api-connector/
+├── connector/                  # shared plumbing
+│   ├── __init__.py             # re‑exports APIClient
+│   ├── auth.py                 # OAuth2Manager
+│   ├── client.py               # _request + retry/back‑off
+│   ├── logger.py               # redacting JSON logger
+│   ├── anomaly.py              # rate‑spike detector
+│   ├── models.py               # Pydantic v2 DTOs
+│   ├── base.py                 # BaseConnector ABC (NEW)
+│   └── registry.py             # provider lookup map
+│
+├── connectors/                 # provider adapters (extensible)
+│   ├── __init__.py             # empty – marks package
+│   ├── sim.py                  # SimConnector -> FastAPI mock
+│   └── google.py               # (example) GoogleConnector
+│
+├── simapi/                     # FastAPI mock API (unchanged)
 │   └── main.py
-├── tests/              # pytest suite
+│
+├── tests/                      # pytest suite
 ├── Dockerfile
 ├── docker-compose.yml
-├── pyproject.toml      # build metadata, black/flake8 config
-└── README.md           # ← you are here
+├── pyproject.toml              # build meta, flake8 cfg, entry‑points
+└── README.md                   # you are here
 ```
 
 ---
 
 ## Quick Start
 
-### Run Locally with Python (virtualenv)
+### Run Locally with Python
 
 ```bash
-python3.11 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 export CLIENT_ID=testclient CLIENT_SECRET=testsecret
-uvicorn simapi.main:app --port 8000 &   # background mock API
-pytest -q                                # all tests green
+uvicorn simapi.main:app --port 8000 &   # start mock API
+pytest -q                                # 3 tests pass
 ```
 
-### Run Everything with Docker Compose
+### Run with Docker Compose
 
 ```bash
-docker compose up --build
-# ➜ api_sim on :8000, tests container runs pytest (3 passed)
+docker compose up --build   # builds SDK image, spins mock API, runs tests
 ```
 
-### Pull the Pre‑built Image & Test
+### Pull the Published Image
 
 ```bash
-# image published by CI: nwaekwudavid/async-api-connector:latest
-docker run --rm -e CLIENT_ID=testclient -e CLIENT_SECRET=testsecret \
-  nwaekwudavid/async-api-connector
+docker pull nwaekwudavid/async-api-connector:latest
+# run tests inside
+docker run --rm -e CLIENT_ID=x -e CLIENT_SECRET=y nwaekwudavid/async-api-connector
 ```
-
-(Defaults to running `pytest -q` inside the image.)
 
 ---
 
-## Runtime Configuration
+## Runtime Configuration
 
-Environment variables (captured by `Settings`):
+Environment vars handled by Pydantic Settings:
 
-| Variable                     | Default                   | Purpose                                 |
-| ---------------------------- | ------------------------- | --------------------------------------- |
-| `BASE_URL` / `API_BASE_URL`  | `https://api.example.com` | Root URL for requests.                  |
-| `CLIENT_ID`, `CLIENT_SECRET` | —                         | OAuth2 client credentials *(required)*. |
-| `TOKEN_PATH`                 | `/oauth2/token`           | Override token endpoint.                |
-| `MAX_RETRIES`                | `3`                       | Max network / 5xx / 429 retries.        |
-| `BACKOFF_FACTOR`             | `1.0`                     | Seconds → 1, 2, 4 … up to jitter.       |
-| `CONCURRENCY_LIMIT`          | `10`                      | Parallel page fetches.                  |
-| `RATE_THRESHOLD`             | `100`                     | Requests/min before anomaly warning.    |
-
-Set via `.env` (picked up by Pydantic‑Settings) or standard `export`.
+| Var                          | Default                   | Notes                 |
+| ---------------------------- | ------------------------- | --------------------- |
+| `BASE_URL`                   | `https://api.example.com` | per‑instance override |
+| `CLIENT_ID`, `CLIENT_SECRET` | —                         | required for OAuth2   |
+| `TOKEN_PATH`                 | `/oauth2/token`           | provider override     |
+| `MAX_RETRIES`                | `3`                       | retry attempts        |
+| `BACKOFF_FACTOR`             | `1.0`                     | exponential factor    |
+| `CONCURRENCY_LIMIT`          | `10`                      | parallel page fetches |
+| `RATE_THRESHOLD`             | `100`                     | anomaly detector      |
 
 ---
 
-## Using the Connector in Your Code
+## Connector Registry & Extensibility
+
+*Register a provider in one place – no edits to core plumbing.*
 
 ```python
-from connector import APIClient
+# connector/registry.py
+_PLUGINS = {
+    "sim": "connectors.sim.SimConnector",
+    "google": "connectors.google.GoogleConnector",  # add new line
+}
+```
+
+### Writing a new connector (Twitter example)
+
+```python
+# connectors/twitter.py
+from connector.base import BaseConnector
+
+class TwitterConnector(BaseConnector):
+    ENDPOINTS = {
+        "list_users": ("GET", "/2/users"),
+    }
+
+    async def list_users(self, **kw):
+        body = await self._call("list_users", params={"max_results": 100})
+        return body["data"]
+```
+
+Add `"twitter": "connectors.twitter.TwitterConnector"` to `_PLUGINS` and you’re done.
+
+---
+
+## Using the Connector
+
+```python
+from connector.registry import get_connector
 import asyncio, os
 
-os.environ.update(
-    BASE_URL="https://customer-api.com/v1",
-    CLIENT_ID="abc123",
-    CLIENT_SECRET="superSecret",
-)
+os.environ.update(BASE_URL="https://api.twitter.com", CLIENT_ID="id", CLIENT_SECRET="sec")
+
+Connector = get_connector("twitter")
+client = Connector(concurrency_limit=5)
 
 async def main():
-    client = APIClient()
-    items = await client.list_all_items()  # paginated GET /items
-    print(items[0])
+    users = await client.list_users()
+    print(users[0])
     await client.close()
 
 asyncio.run(main())
 ```
 
-You can also call lower‑level helpers: `await client.list_items_page(3)` or
-`await client._request("POST", "/orders", json=payload)`.
+All adapters share retry, auth, anomaly detection, and logging automatically.
 
 ---
 
 ## Logging & Redaction
 
-* Structured JSON via `logging.Logger` named **`connector`**.
-* Headers `Authorization`, `X‑API‑Key` and any body keys listed in
-  `logger.SENSITIVE_KEYS` are replaced with `"***REDACTED***"`.
-* Override `LOG_LEVEL` env‑var or configure via `logging` dictConfig.
-
-Sample log line:
-
-```json
-{"ts":"2025-05-18T10:00:01Z","elapsed_ms":123,"method":"GET","url":"/items?page=2","status":200}
-```
+* JSON logging via `connector.logger`
+* Headers `Authorization`, `X‑API‑Key`, and JSON keys `access_token`, `refresh_token` are replaced with `"***REDACTED***"`.
 
 ---
 
 ## Anomaly Detection
 
-`AnomalyDetector` records timestamps of outbound calls in a deque. If the
-rolling 60‑second window exceeds `RATE_THRESHOLD` it emits a `WARNING` log.
-You can swap this implementation for Prometheus counters or send to an APM
-backend; only one method (`record_event`) is used by `APIClient`.
+`AnomalyDetector.record_event()` is invoked after every successful request.
+If the rolling 60‑second window exceeds `RATE_THRESHOLD` it logs a `WARNING`.
+Swap implementation easily for Prometheus counters.
 
 ---
 
 ## Testing
 
+* `tests/conftest.py` wires **any** connector to the in‑process FastAPI mock using `ASGITransport` – fast & side‑effect‑free.
+* Suite covers token refresh, retry logic, pagination fan‑out.
+
+Commands:
+
 ```bash
-pytest -q                # unit + integration (mock API in‑process)
-pytest -k retry -vv      # run a specific test
-pytest --cov=connector   # coverage
+pytest -q                 # run all
+pytest -k retry -vv       # run subset
+pytest --cov=connector    # coverage
 ```
 
-* CI runs `pre‑commit`, Black, Flake8 (line‑length 88), mypy and the full
-  async suite on every push & PR.
+---
+
+## CI/CD
+
+| Stage  | Tool                                                |
+| ------ | --------------------------------------------------- |
+| Format | **Black** (`--check`)                               |
+| Lint   | **Flake8** (configured in `pyproject.toml`)         |
+| Type   | **mypy** (Pydantic plugin)                          |
+| Tests  | **pytest** (async)                                  |
+| Build  | **docker build** → tag commit SHA                   |
+| Push   | **docker/login‑action** ➜ Docker Hub (`latest`+SHA) |
+
+Workflow injects dummy creds for tests and real Docker Hub secrets for pushes.
 
 ---
 
-## CI/CD Pipeline
+## Security Notes
 
-| Stage      | Tool                               | Notes                       |
-| ---------- | ---------------------------------- | --------------------------- |
-| **Format** | Black (check)                      | 88‑char, string‑normalise.  |
-| **Lint**   | Flake8                             | Config in `pyproject.toml`. |
-| **Types**  | mypy                               | Pydantic plugin enabled.    |
-| **Tests**  | pytest                             | Asyncio + ASGITransport.    |
-| **Build**  | Docker Buildx                      | Tags image with commit SHA. |
-| **Push**   | `docker/login-action` ➜ Docker Hub | Tags `latest` & SHA.        |
-
-Secrets required (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`) are set in repo
-settings. Dummy API creds are supplied via workflow `env:`.
+* No secrets baked into image; supply at runtime or via secret manager.
+* Redaction ensures bearer tokens never hit plain logs.
+* Dependabot keeps third‑party libs patched; mypy enforces types.
 
 ---
 
-## Security Considerations
+## Road‑map
 
-* **Secrets never baked** into the image; pass at runtime via env or secret
-  manager.
-* **All outbound logs redacted** for auth headers & tokens.
-* **Dependency pins** via `requirements.txt`; Dependabot enabled in CI.
-* **OWASP**: mock API validates token type (`Bearer`) and expiry.
+1. **YAML manifest per adapter** (replace ENDPOINTS dict; zero code per endpoint).
+2. Registry via **entry‑points** so external packages auto‑discover.
+3. Cursor & offset pagination strategies.
+4. Pluggable non‑OAuth auth (API‑Key, AWS SigV4).
+5. OpenTelemetry spans for tracing.
 
----
+ 
 
-## Road‑map / TODO
-
-1. **Manifest‑Driven Generic Client** – add `ManifestMixin` (see `docs/`) so
-   any endpoint can be described in YAML/JSON with zero code changes.
-2. **Cursor & offset pagination strategies**.
-3. **Pluggable auth strategies** (API Key, AWS SigV4, HMAC) behind
-   `AuthManager` interface.
-4. **Prometheus / OpenTelemetry hooks** for metrics & tracing.
-5. **Rate‑limit adaptive back‑off** (respect provider‑specific headers).
-
----
-
-> *Maintained by @markdave123-py – PRs & issues welcome.*
+*Maintained by **markdave123-py** – issues & PRs welcome.*
