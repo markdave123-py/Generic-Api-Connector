@@ -53,24 +53,25 @@ Core abilities
 
 ```mermaid
 flowchart TD
-    subgraph Plumbing[Shared plumbing (connector/*)]
-        C1(APIClient\n_retry / logging) -- uses --> OA[OAuth2Manager]
-        C1 -- event --> AD[AnomalyDetector]
+    subgraph "Plumbing (connector/*)"
+        C1["APIClient
+Retry + Logging"] --> OA[OAuth2Manager]
+        C1 --> AD[AnomalyDetector]
     end
 
-    subgraph Adapters[Provider adapters (connectors/*)]
-        G[GoogleConnector] -- inherits --> C1
-        F[FacebookConnector] -- inherits --> C1
-        S[SimConnector] -- inherits --> C1
+    subgraph "Adapters (connectors/*)"
+        G[GoogleConnector] --> C1
+        F[FacebookConnector] --> C1
+        S[SimConnector] --> C1
     end
 
-    REG(Registry) -- "sim" --> S
-    REG -- "google" --> G
-    REG -- "facebook" --> F
+    REG[Registry] -->|"sim"| S
+    REG -->|"google"| G
+    REG -->|"facebook"| F
 
-    UserCode -->|list_users()| G
-    S -->|/items| Mock[FastAPI Mock]
-    G -->|/admin/users| GoogleAPI[(Google API)]
+    User["Your Code"] -->|"list_users()"| G
+    S -->|"/items"| Mock[FastAPI Mock]
+    G -->|"/admin/users"| GoogleAPI["Google API"]
 ```
 
 * **Adapters** contain only endpoint paths + tiny per‑provider helpers.
@@ -273,4 +274,4 @@ Workflow injects dummy creds for tests and real Docker Hub secrets for pushes.
 
  
 
-*Maintained by **markdave123-py** – issues & PRs welcome.*
+*Maintained by **Your Team Name** – issues & PRs welcome.*
