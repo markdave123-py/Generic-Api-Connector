@@ -2,7 +2,6 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from simapi.main import app as fastapi_app
-from connector.client import APIClient
 from httpx._transports.asgi import ASGITransport
 from connector.registry import get_connector
 
