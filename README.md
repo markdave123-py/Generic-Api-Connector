@@ -28,9 +28,7 @@
 
 ## Project Overview
 
-The **Async‑API Connector** is a production‑quality asynchronous Python SDK and
-mock‑server that demonstrates best‑practices for **securely** consuming
-third‑party REST APIs that use *client‑credentials* OAuth 2.
+The **Async‑API Connector** is a production‑quality asynchronous Python SDK and mock‑server that demonstrates best‑practices for **securely** consuming third‑party REST APIs that use *client‑credentials* OAuth 2.
 
 Core abilities
 
@@ -113,6 +111,23 @@ async-api-connector/
 
 ## Quick Start
 
+### 0 · Create provider secrets (Docker way)
+
+For each adapter you only need **two files** — saved *outside* your repo.
+
+```bash
+mkdir -p secrets                           # if not already present
+# SimConnector (used by built‑in tests)
+echo "testclient"  > secrets/sim_client_id
+echo "testsecret"  > secrets/sim_client_secret
+
+# Add other providers when you create their adapters
+# echo "gid"  > secrets/google_client_id
+# echo "gsec" > secrets/google_client_secret
+```
+
+*Never commit the `secrets/` folder; it is listed in `.gitignore`.*
+
 ### Run Locally with Python
 
 ```bash
@@ -125,6 +140,15 @@ pytest -q                                # 3 tests pass
 ```
 
 ### Run with Docker Compose
+
+Docker mounts the files created above into each container as
+`/run/secrets/<provider>_client_id` and `…_client_secret` and the connector
+picks them up automatically when `SECRET_BACKEND=docker`.
+
+```bash
+# one‑liner that builds the image, starts the FastAPI mock and executes pytest
+docker compose up --build
+```
 
 ```bash
 docker compose up --build   # builds SDK image, spins mock API, runs tests
@@ -158,43 +182,34 @@ Environment vars handled by Pydantic Settings:
 
 ## Connector Registry & Extensibility
 
-*Register a provider in one place – no edits to core plumbing.*
+**How to add a new provider with its own encrypted secrets**
 
-```python
-# connector/registry.py
-_PLUGINS = {
-    "sim": "connectors.sim.SimConnector",
-    "google": "connectors.google.GoogleConnector",  # add new line
-}
-```
+| Step | Command / File                                                                            | Purpose                           |
+| ---- | ----------------------------------------------------------------------------------------- | --------------------------------- |
+|  1   | `echo "tid" > secrets/twitter_client_id`<br>`echo "tsec" > secrets/twitter_client_secret` | create Docker secrets for Twitter |
+|  2   | `connectors/twitter.py` (see example below)                                               | implement thin adapter            |
+|  3   | `connector/registry.py` → `_PLUGINS["twitter"] = "connectors.twitter.TwitterConnector"`   | register it                       |
+|  4   | `docker-compose.yml` → mount the two secrets & set `PROVIDER: twitter`                    | run it (no env creds)             |
 
-### Writing a new connector (Twitter example)
+> Docker Swarm equivalent: `docker secret create twitter_client_id -` then
+> `--secret twitter_client_id` on `docker service create`.
 
-```python
-# connectors/twitter.py
-from connector.base import BaseConnector
-
-class TwitterConnector(BaseConnector):
-    ENDPOINTS = {
-        "list_users": ("GET", "/2/users"),
-    }
-
-    async def list_users(self, **kw):
-        body = await self._call("list_users", params={"max_results": 100})
-        return body["data"]
-```
-
-Add `"twitter": "connectors.twitter.TwitterConnector"` to `_PLUGINS` and you’re done.
-
----
-
-## Using the Connector
+*Register a provider in one place – no edits to shared plumbing.*
 
 ```python
 from connector.registry import get_connector
 import asyncio, os
 
-os.environ.update(BASE_URL="https://api.twitter.com", CLIENT_ID="id", CLIENT_SECRET="sec")
+# For **local dev only** you may still export env‑vars (EnvProvider).
+# In Docker/Swarm you DON’T set the secrets here – they are mounted at
+# /run/secrets/<provider>_client_* and picked up automatically when
+# SECRET_BACKEND=docker.
+
+os.environ.setdefault("PROVIDER", "twitter")          # choose adapter
+os.environ.setdefault("SECRET_BACKEND", "env")         # dev path → EnvProvider
+os.environ.setdefault("CLIENT_ID", "tid")              # dev‑only dummy value
+os.environ.setdefault("CLIENT_SECRET", "tsec")         # dev‑only dummy value
+os.environ.setdefault("BASE_URL", "https://api.twitter.com")
 
 Connector = get_connector("twitter")
 client = Connector(concurrency_limit=5)
@@ -206,6 +221,11 @@ async def main():
 
 asyncio.run(main())
 ```
+
+In **Docker / Swarm** deployments you omit the `CLIENT_ID` / `CLIENT_SECRET`
+exports entirely.  Credentials are supplied by the encrypted Docker Secrets
+mechanism (see above), and the connector retrieves them from
+`/run/secrets/twitter_client_id` and `twitter_client_secret`.
 
 All adapters share retry, auth, anomaly detection, and logging automatically.
 
@@ -220,9 +240,7 @@ All adapters share retry, auth, anomaly detection, and logging automatically.
 
 ## Anomaly Detection
 
-`AnomalyDetector.record_event()` is invoked after every successful request.
-If the rolling 60‑second window exceeds `RATE_THRESHOLD` it logs a `WARNING`.
-Swap implementation easily for Prometheus counters.
+`AnomalyDetector.record_event()` is invoked after every successful request. If the rolling 60‑second window exceeds `RATE_THRESHOLD` it logs a `WARNING`. Swap implementation easily for Prometheus counters.
 
 ---
 
@@ -235,8 +253,6 @@ Commands:
 
 ```bash
 pytest -q                 # run all
-pytest -k retry -vv       # run subset
-pytest --cov=connector    # coverage
 ```
 
 ---
@@ -274,4 +290,4 @@ Workflow injects dummy creds for tests and real Docker Hub secrets for pushes.
 
  
 
-*Maintained by **Your Team Name** – issues & PRs welcome.*
+*Maintained by ****Your Team Name**** – issues & PRs welcome.*

@@ -1,11 +1,23 @@
 version: "3.9"
+
+secrets:
+  # one pair of secrets for the Sim connector
+  sim_client_id:
+    file: ./secrets/sim_client_id
+  sim_client_secret:
+    file: ./secrets/sim_client_secret
+    
 services:
   api_sim:
     build: .
     command: uvicorn simapi.main:app --host 0.0.0.0 --port 8000
     environment:
-      - API_CLIENT_ID=testclient
-      - API_CLIENT_SECRET=testsecret
+      SECRET_BACKEND: docker # use FileProvider
+      PROVIDER: sim
+      BASE_URL: http://api_sim:8000 
+    secrets:
+      - sim_client_id
+      - sim_client_secret
     ports:
       - "8000:8000"
   tests:
@@ -13,7 +25,10 @@ services:
     depends_on:
       - api_sim
     environment:
-      - API_BASE_URL=http://api_sim:8000
-      - API_CLIENT_ID=testclient
-      - API_CLIENT_SECRET=testsecret
+      SECRET_BACKEND: docker
+      PROVIDER: sim
+      API_BASE_URL: http://api_sim:8000
+    secrets:
+      - sim_client_id
+      - sim_client_secret
     command: pytest -q

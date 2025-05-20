@@ -30,11 +30,7 @@ class APIClient:
         s = get_settings()
         self.base_url = (base_url or s.base_url).rstrip("/")
         self._client = httpx.AsyncClient(base_url=self.base_url, timeout=10)
-        self._oauth = OAuth2Manager(
-            self._client,
-            client_id or s.client_id,
-            client_secret or s.client_secret,
-        )
+        self._oauth = OAuth2Manager(self._client, s)
         self._max_retries = max_retries or s.max_retries
         self._backoff_factor = backoff_factor or s.backoff_factor
         self._concurrency_limit = concurrency_limit or s.concurrency_limit

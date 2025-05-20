@@ -5,17 +5,17 @@ import httpx
 from .models import TokenResponse
 from .exceptions import AuthenticationError
 from .logger import logger
+from connector.config import Settings
 
 _TOKEN_ENDPOINT = "/oauth2/token"
 
 
 class OAuth2Manager:
-    def __init__(self, client: httpx.AsyncClient, client_id: str, client_secret: str):
+    def __init__(self, client: httpx.AsyncClient, settings: Settings):
         self._client = client
-        self._client_id = client_id
-        self._client_secret = client_secret
+        self._settings = settings
         self._token: Optional[str] = None
-        self._expires_at: Optional[float] = None
+        self._expires_at: float = 0.0
         self._lock = asyncio.Lock()
 
     async def get_token(self) -> str:
@@ -30,8 +30,8 @@ class OAuth2Manager:
         logger.info("Refreshing OAuth2 token …")
         data = {
             "grant_type": "client_credentials",
-            "client_id": self._client_id,
-            "client_secret": self._client_secret,
+            "client_id": await self._settings.client_id_async(),
+            "client_secret": await self._settings.client_secret_async(),
         }
         # Never log secrets
         logger.debug("Token request: POST %s", _TOKEN_ENDPOINT)
