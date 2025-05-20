@@ -1,11 +1,14 @@
 import asyncio
 import time
 from typing import Optional
+
 import httpx
-from .models import TokenResponse
+
+from connector.config import Settings
+
 from .exceptions import AuthenticationError
 from .logger import logger
-from connector.config import Settings
+from .models import TokenResponse
 
 _TOKEN_ENDPOINT = "/oauth2/token"
 

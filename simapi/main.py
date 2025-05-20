@@ -1,6 +1,7 @@
 import math
 import os
-from fastapi import Depends, FastAPI, HTTPException, Form
+
+from fastapi import Depends, FastAPI, Form, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from starlette.responses import JSONResponse
 

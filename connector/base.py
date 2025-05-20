@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Iterable
+from typing import Any, Dict, Iterable
+
 from connector.client import APIClient
 
 

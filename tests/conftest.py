@@ -1,9 +1,10 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from simapi.main import app as fastapi_app
 from httpx._transports.asgi import ASGITransport
+
 from connector.registry import get_connector
+from simapi.main import app as fastapi_app
 
 
 @pytest.fixture()

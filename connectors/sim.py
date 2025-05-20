@@ -1,4 +1,5 @@
 from typing import List
+
 from connector.base import BaseConnector
 from connector.models import Item
 

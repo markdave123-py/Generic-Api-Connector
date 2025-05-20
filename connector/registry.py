@@ -1,5 +1,6 @@
 from importlib import import_module
 from typing import Dict, Type
+
 from connector.base import BaseConnector
 
 _PLUGINS: Dict[str, str] = {

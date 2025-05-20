@@ -1,16 +1,18 @@
 import asyncio
 from typing import List, Optional
+
 import httpx
-from .config import get_settings
+
+from .anomaly import AnomalyDetector
 from .auth import OAuth2Manager
-from .models import Item, ItemPage
+from .config import get_settings
 from .exceptions import (
     APIClientError,
     AuthenticationError,
     NotFoundError,
 )
 from .logger import logger, redact_headers
-from .anomaly import AnomalyDetector
+from .models import Item, ItemPage
 from .utils import gather_limited
 
 

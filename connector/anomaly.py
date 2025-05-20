@@ -1,8 +1,9 @@
 import time
 from collections import deque
+from typing import Deque
+
 from .config import get_settings
 from .logger import logger
-from typing import Deque
 
 _settings = get_settings()
 
