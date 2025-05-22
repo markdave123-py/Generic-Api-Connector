@@ -96,6 +96,10 @@ class APIClient:
     async def list_items_page(self, page: int = 1) -> ItemPage:
         resp = await self._request("GET", f"/items?page={page}")
         return ItemPage.parse_obj(resp.json())
+    
+    async def get_project(self, project_id: int) -> Item:
+        resp = await self._request("GET", f"/projects/{project_id}")
+        return Item.model_validate(resp.json())
 
     async def list_all_items(self, concurrent: bool = True) -> List[Item]:
         """Fetch every item across pages – optionally concurrent."""

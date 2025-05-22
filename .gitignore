@@ -13,3 +13,4 @@ pytest_cache/
 venv/
 venv
 secrets
+.ruff_cache

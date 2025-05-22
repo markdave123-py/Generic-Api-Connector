@@ -5,6 +5,8 @@ from fastapi import Depends, FastAPI, Form, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from starlette.responses import JSONResponse
 
+from connector.models import Item
+
 # Compatibility shim
 # FastAPI ≤0.109 does not ship OAuth2ClientCredentialsRequestForm.  If it is
 # unavailable we build a minimal replacement that behaves the same for our test
@@ -69,3 +71,9 @@ async def list_items(page: int = 1, token: str = Depends(bearer_scheme)):
         "total_pages": total_pages,
         "next_page": next_page,
     }
+
+@app.get("/projects/{proj_id}", response_model=Item)
+async def get_project(proj_id: int):
+    if 1 <= proj_id <= 5:
+        return ITEMS[proj_id - 1]
+    raise HTTPException(status_code=404, detail="Not found")
